@@ -1,9 +1,7 @@
 name: React Template CI
-
 on:
   pull_request:
     branches: [master, qa, develop]
-
 jobs:
   build-and-test:
     name: Build & Test
@@ -33,9 +31,8 @@ jobs:
       - name: Build
         run: yarn build:prod
 
-      # Upload coverage artifacts if needed (optional)
-      # - name: Upload code coverage
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: coverage
-      #     path: coverage/
+      - name: Upload code coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: coverage/
