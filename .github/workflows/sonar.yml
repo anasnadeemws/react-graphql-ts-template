@@ -1,0 +1,97 @@
+name: SonarCloud Analysis
+
+on:
+  workflow_run:
+    workflows: ["React Template CI"]
+    types: [completed]
+
+jobs:
+  sonar-analysis:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download code coverage
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: artifacts } = await github.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id
+            });
+
+            const coverageArtifact = artifacts.find(artifact => artifact.name === 'coverage');
+
+            if (!coverageArtifact) {
+              console.log('Coverage artifact not found.');
+              return;
+            }
+
+            const downloadUrl = coverageArtifact.archive_download_url;
+            const downloadPath = `${{ github.workspace }}/coverage.zip`;
+
+            await downloadFile(downloadUrl, downloadPath);
+
+            const unzipCmd = `unzip ${downloadPath} -d coverage`;
+            await execCmd(unzipCmd);
+
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.organization=wednesday-solutions
+            -Dsonar.projectKey=wednesday-solutions_react-graphql-ts-template_AY7GxkO6B2n8RRmGoU1i
+            -Dsonar.language=ts
+            -Dsonar.sources=.
+            -Dsonar.tests=app
+            -Dsonar.exclusions=**/.storybook,**/internals,**/server
+            -Dsonar.test.inclusions=**/*.test.ts
+            -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info
+            -Dsonar.testExecutionReportPaths=./reports/test-report.xml
+            -Dsonar.sourceEncoding=UTF-8
+
+# Helper function to download and extract artifacts
+async function downloadFile(url, path) {
+  const https = require('https');
+  const fs = require('fs');
+
+  const file = fs.createWriteStream(path);
+
+  return new Promise((resolve, reject) => {
+    https.get(url, response => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve();
+      });
+    }).on('error', error => {
+      fs.unlinkSync(path);
+      reject(error.message);
+    });
+  });
+}
+
+# Helper function to execute shell commands
+async function execCmd(cmd) {
+  const { exec } = require('child_process');
+
+  return new Promise((resolve, reject) => {
+    exec(cmd, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        reject(error);
+      } else {
+        console.log(stdout);
+        resolve();
+      }
+    });
+  });
+}
