@@ -2,7 +2,6 @@ name: React Template CI
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
     branches: [master, qa, develop]
 
 jobs:
