@@ -1,6 +1,7 @@
 name: React Template CI
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened, closed]
     branches: [master, qa, develop]
 jobs:
   build-and-test:
@@ -41,8 +42,10 @@ jobs:
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
-        with:
-          args: -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.pullrequest.base=master
+            -Dsonar.pullrequest.key=${{github.event.number}}
